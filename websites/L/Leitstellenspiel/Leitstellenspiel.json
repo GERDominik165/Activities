@@ -82,5 +82,17 @@
   "leitstellenspiel.credit": {
     "description": "Amount of credits, e.g. '3,608,721 credits'",
     "message": "{0} credits"
+  },
+  "leitstellenspiel.blxMenu": {
+    "description": "Shown while the menu of the BlaulichtOS companion mod is open",
+    "message": "In the BlaulichtOS menu"
+  },
+  "leitstellenspiel.blxGlobe": {
+    "description": "Shown while the 3D globe mode of the BlaulichtOS companion mod is active",
+    "message": "Watching the globe"
+  },
+  "leitstellenspiel.blxMods": {
+    "description": "Number of enabled BlaulichtOS features, e.g. '120/130 features active'",
+    "message": "{0}/{1} features active"
   }
 }

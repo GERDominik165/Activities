@@ -13,7 +13,8 @@ type Strings = Record<
   | 'dispatch' | 'mission' | 'building' | 'vehicle' | 'build' | 'alliance' | 'allianceForum' | 'allianceChat'
   | 'schooling' | 'missions' | 'toplist' | 'overview' | 'credits' | 'coins' | 'messages' | 'tasks'
   | 'aao' | 'settings' | 'openMissions' | 'allianceMissions' | 'credit'
-  | 'browsing' | 'viewProfile' | 'buttonViewGame' | 'buttonViewProfile' | 'readingThread' | 'readingDm',
+  | 'browsing' | 'viewProfile' | 'buttonViewGame' | 'buttonViewProfile' | 'readingThread' | 'readingDm'
+  | 'blxMenu' | 'blxGlobe' | 'blxMods',
   string
 >
 
@@ -49,6 +50,9 @@ async function getStrings(): Promise<Strings> {
     buttonViewProfile: 'general.buttonViewProfile',
     readingThread: 'general.readingAThread',
     readingDm: 'general.readingADM',
+    blxMenu: 'leitstellenspiel.blxMenu',
+    blxGlobe: 'leitstellenspiel.blxGlobe',
+    blxMods: 'leitstellenspiel.blxMods',
   }) as Promise<Strings>
 }
 
@@ -73,8 +77,23 @@ function activeDocument(): { doc: Document, path: string } {
 
 let userId: number | null = null
 
+/** State published by the BlaulichtOS companion mod for Leitstellenspiel (window.__blxPresence), if installed. */
+interface BlaulichtOS {
+  active?: boolean
+  version?: string
+  featuresOn?: number
+  featuresTotal?: number
+  panel?: string | null
+  panelIcon?: string | null
+  menu?: boolean
+  globe?: boolean
+  streamer?: boolean
+  logo?: string
+  site?: string
+}
+
 presence.on('UpdateData', async () => {
-  const [lang, privacy, showMission, showAddress, showNames, showStats, showButtons, showTimestamp, showSlideshow, statusDisplay] = await Promise.all([
+  const [lang, privacySetting, showMission, showAddress, showNames, showStats, showButtons, showTimestamp, showSlideshow, statusDisplay] = await Promise.all([
     presence.getSetting<string>('lang').catch(() => 'en'),
     presence.getSetting<boolean>('privacy'),
     presence.getSetting<boolean>('showMission'),
@@ -86,6 +105,14 @@ presence.on('UpdateData', async () => {
     presence.getSetting<boolean>('showSlideshow'),
     presence.getSetting<number>('statusDisplay'),
   ])
+  const showBlx = await presence.getSetting<boolean>('blaulichtos').catch(() => true)
+  const blx = showBlx
+    ? await presence.getPageVariable<{ __blxPresence?: BlaulichtOS }>('__blxPresence')
+        .then(v => (v?.__blxPresence?.active ? v.__blxPresence : null))
+        .catch(() => null)
+    : null
+  // BlaulichtOS streamer mode always forces privacy
+  const privacy = privacySetting || !!blx?.streamer
 
   if (!strings || oldLang !== lang) {
     oldLang = lang
@@ -252,6 +279,21 @@ presence.on('UpdateData', async () => {
     presenceData.smallImageText = t.browsing
   }
 
+  // BlaulichtOS mode: brand icon + the BlaulichtOS window/menu/globe currently in use
+  if (blx) {
+    const blxLogo = blx.logo && /^https:\/\//.test(blx.logo) ? blx.logo : undefined
+    if (blxLogo && presenceData.largeImageKey === LOGO) {
+      presenceData.smallImageKey = blxLogo
+      presenceData.smallImageText = `BlaulichtOS ${blx.version ?? ''} · ${t.blxMods.replace('{0}', `${blx.featuresOn ?? 0}`).replace('{1}', `${blx.featuresTotal ?? 0}`)}`.slice(0, 128)
+    }
+    if (blx.globe)
+      presenceData.details = t.blxGlobe
+    if (blx.panel)
+      presenceData.details = `${blx.panelIcon ? `${blx.panelIcon} ` : ''}${blx.panel}`.slice(0, 128)
+    else if (blx.menu)
+      presenceData.details = t.blxMenu
+  }
+
   if (!presenceData.state)
     delete presenceData.state
   if (!showTimestamp)
@@ -259,7 +301,9 @@ presence.on('UpdateData', async () => {
 
   if (showButtons && !privacy) {
     presenceData.buttons = [{ label: t.buttonViewGame, url: GAME }]
-    if (userId)
+    if (blx?.site && /^https:\/\//.test(blx.site))
+      presenceData.buttons.push({ label: 'BlaulichtOS', url: blx.site })
+    else if (userId)
       presenceData.buttons.push({ label: t.buttonViewProfile, url: `${GAME}/profile/${userId}` })
   }
 

@@ -109,6 +109,12 @@
         "Activity (first line)",
         "Info (second line)"
       ]
+    },
+    {
+      "id": "blaulichtos",
+      "title": "Show BlaulichtOS mod activity",
+      "icon": "fas fa-puzzle-piece",
+      "value": true
     }
   ]
 }
